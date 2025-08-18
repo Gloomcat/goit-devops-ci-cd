@@ -1,0 +1,67 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.env
+*.venv
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# === Django ===
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static/
+
+# Django migrations (if you don’t want to commit auto-generated ones)
+*/migrations/__pycache__/
+*/migrations/*.py
+
+# === Docker ===
+*.pid
+*.seed
+*.tar
+*.log
+.docker/
+docker-data/
+
+# === Docker Compose ===
+# Override files for local dev
+docker-compose.override.yml
+docker-compose.override.*.yml
+
+# === System files ===
+.DS_Store
+Thumbs.db
+
+# IDE configs
+.vscode/
+.idea/
+*.swp
+
