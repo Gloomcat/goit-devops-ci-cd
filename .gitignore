@@ -65,3 +65,20 @@ Thumbs.db
 .idea/
 *.swp
 
+# === Terraform ===
+.terraform/
+.terraform/*
+# Local state
+*.tfstate
+terraform.tfstate.*
+# Crash logs
+crash.log
+crash.*.log
+# Sensitive variable files (do not commit)
+*.tfvars
+*.tfvars.json
+# Local overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
