@@ -1,0 +1,29 @@
+global:
+  imageRepository: ""
+  imageTag: ""
+
+# Define Argo CD repositories to register
+repositories:
+- name: goit-devops-ci-cd
+  url: https://github.com/Gloomcat/goit-devops-ci-cd
+  namespace: argocd
+
+# Define Argo CD applications to create
+applications:
+- name: django-app
+  namespace: argocd
+  project: default
+  source:
+    repoURL: https://github.com/Gloomcat/goit-devops-ci-cd
+    targetRevision: main
+    path: project/charts/django-app
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

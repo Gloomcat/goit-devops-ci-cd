@@ -31,12 +31,3 @@ config:
   DJANGO_DEBUG: "false"
   DJANGO_ALLOWED_HOSTS: "*"
   USE_SQLITE: "true"
-
-# Resources
-resources:
-  requests:
-    cpu: 50m
-    memory: 80Mi
-  limits:
-    cpu: 150m
-    memory: 160Mi

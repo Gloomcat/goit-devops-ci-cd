@@ -62,3 +62,28 @@ output "eks_node_role_arn" {
   description = "IAM role ARN for EKS Worker Nodes"
   value       = module.eks.eks_node_role_arn
 }
+
+
+# Jenkins module aggregated outputs
+output "jenkins_url" {
+  description = "URL for Jenkins UI"
+  value       = try(module.jenkins.jenkins_url, null)
+}
+
+output "jenkins_admin_password" {
+  description = "Initial Jenkins admin password"
+  value       = try(module.jenkins.jenkins_admin_password, null)
+  sensitive   = true
+}
+
+# Argo CD module aggregated outputs
+output "argocd_url" {
+  description = "URL for the Argo CD UI"
+  value       = try(module.argo_cd.argocd_url, null)
+}
+
+output "argocd_initial_admin_password" {
+  description = "Initial Argo CD admin password"
+  value       = try(module.argo_cd.argocd_initial_admin_password, null)
+  sensitive   = true
+}

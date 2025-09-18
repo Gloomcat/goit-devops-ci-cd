@@ -1,0 +1,52 @@
+{{- range $i, $app := .Values.applications }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $app.name }}
+  namespace: {{ $app.namespace | default "argocd" }}
+spec:
+  project: {{ $app.project | default "default" }}
+  source:
+    repoURL: {{ $app.source.repoURL | quote }}
+    targetRevision: {{ $app.source.targetRevision | default "HEAD" | quote }}
+    {{- if $app.source.path }}
+    path: {{ $app.source.path | quote }}
+    {{- end }}
+    {{- if $app.source.chart }}
+    chart: {{ $app.source.chart | quote }}
+    {{- end }}
+    {{- if $app.source.helm }}
+    helm:
+      {{- if $app.source.helm.values }}
+      values: {{ $app.source.helm.values | quote }}
+      {{- end }}
+      {{- if $app.source.helm.valueFiles }}
+      valueFiles:
+        {{- range $vf := $app.source.helm.valueFiles }}
+        - {{ $vf | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if and (not $app.source.helm.values) $.Values.global.imageRepository }}
+      {{- if $.Values.global.imageTag }}
+      values: {{ printf "image:\n  repository: %s\n  tag: %s" $.Values.global.imageRepository $.Values.global.imageTag | quote }}
+      {{- else }}
+      values: {{ printf "image:\n  repository: %s" $.Values.global.imageRepository | quote }}
+      {{- end }}
+      {{- end }}
+    {{- else if $app.source.values }}
+    helm:
+      values: {{ $app.source.values | quote }}
+    {{- end }}
+  destination:
+    server: {{ ($app.destination.server | default "https://kubernetes.default.svc") | quote }}
+    namespace: {{ $app.destination.namespace | quote }}
+  {{- if $app.syncPolicy }}
+  syncPolicy:
+    {{- if $app.syncPolicy.automated }}
+    automated:
+      prune: {{ ($app.syncPolicy.automated.prune | default false) }}
+      selfHeal: {{ ($app.syncPolicy.automated.selfHeal | default false) }}
+    {{- end }}
+  {{- end }}
+---
+{{- end }}

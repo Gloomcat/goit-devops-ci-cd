@@ -1,0 +1,20 @@
+{{- range $i, $repo := .Values.repositories }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $repo.name }}
+  namespace: {{ $repo.namespace | default "argocd" }}
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  url: {{ $repo.url | quote }}
+  {{- if $repo.username }}
+  username: {{ $repo.username | quote }}
+  {{- end }}
+  {{- if $repo.password }}
+  password: {{ $repo.password | quote }}
+  {{- end }}
+---
+{{- end }}
+

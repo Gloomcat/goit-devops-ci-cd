@@ -1,0 +1,6 @@
+server:
+  service:
+    type: LoadBalancer
+    port: 443
+
+# Keep the rest defaults; customize as needed

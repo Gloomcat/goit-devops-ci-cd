@@ -1,0 +1,6 @@
+apiVersion: v2
+name: argocd-apps
+version: 0.1.0
+appVersion: "1.0"
+description: A lightweight chart to create Argo CD Applications and Repositories
+

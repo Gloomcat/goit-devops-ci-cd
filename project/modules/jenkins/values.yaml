@@ -1,0 +1,106 @@
+controller:
+  serviceType: LoadBalancer
+  servicePort: 80
+  service:
+    port: 80
+    targetPort: 8080
+
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+    - credentials-binding:latest
+    - github:latest
+    - docker-plugin:latest
+    - docker-workflow:latest
+    - job-dsl:latest
+
+  extraEnv:
+    - name: GITHUB_USER
+      valueFrom:
+        secretKeyRef:
+          name: jenkins-github-ci
+          key: GITHUB_USER
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: jenkins-github-ci
+          key: GITHUB_TOKEN
+    - name: ADMIN_USER
+      valueFrom:
+        secretKeyRef:
+          name: jenkins-admin
+          key: ADMIN_USER
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: jenkins-admin
+          key: ADMIN_PASSWORD
+
+  serviceAccount:
+     name: jenkins-sa
+     create: false
+
+  JCasC:
+    configScripts:
+      creds.yaml: |
+        jenkins:
+          credentials:
+            system:
+              domainCredentials:
+                - credentials:
+                    - usernamePassword:
+                        scope: GLOBAL
+                        id: "github-token"
+                        username: "${GITHUB_USER}"
+                        password: "${GITHUB_TOKEN}"
+                        description: "GitHub PAT"
+      security.yaml: |
+        jenkins:
+          securityRealm:
+            local:
+              allowsSignup: false
+              users:
+                - id: "${ADMIN_USER}"
+                  password: "${ADMIN_PASSWORD}"
+          authorizationStrategy:
+            loggedInUsersCanDoAnything:
+              allowAnonymousRead: false
+      jobs.yaml: |
+        jenkins:
+          jobs:
+            - script: |
+                pipelineJob('goit-django-docker') {
+                  definition {
+                    cpsScm {
+                      scm {
+                        git {
+                          remote {
+                            url('https://github.com/Gloomcat/goit-devops-ci-cd.git')
+                            credentials('github-token')
+                          }
+                          branches('*/dev')
+                        }
+                      }
+                      scriptPath('Jenkinsfile')
+                    }
+                  }
+                }
+      dsl.yaml: |
+        unclassified:
+          jobDsl:
+            useScriptSecurity: false
