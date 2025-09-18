@@ -1,4 +1,4 @@
-# Lesson 7 — Terraform + EKS + ECR + Helm (Django app)
+# Project — Terraform + EKS + Helm + Jenkins + ArgoCD (Django app)
 
 ## Overview
 
@@ -84,12 +84,12 @@ helm version
 
 ## Setup S3 backend
 
-1) Cd to the lesson-7 directory:
+1) Cd to the project directory:
 ```bash
-cd lesson-7
+cd project
 ```
 
-2) Temporarily disable the S3 backend (rename `lesson-7/backend.tf` to `backend.tf.disabled`, or comment out the `backend "s3"` block)
+2) Temporarily disable the S3 backend (rename `project/backend.tf` to `backend.tf.disabled`, or comment out the `backend "s3"` block)
 
 3) Initialize Terraform without backend (local state first)
 - Commit `.terraform.lock.hcl` to the repository for reproducible builds.
@@ -98,12 +98,12 @@ terraform init
 ```
 
 4) Create backend resources (S3 bucket + DynamoDB table) via module
-- S3 bucket names must be globally unique. If the default `devops-ci-cd-s3-bucket` conflicts, change it consistently in `lesson-7/main.tf` and `lesson-7/backend.tf`.
+- S3 bucket names must be globally unique. If the default `devops-ci-cd-s3-bucket` conflicts, change it consistently in `project/main.tf` and `project/backend.tf`.
 ```bash
 terraform apply -target="module.s3_backend"
 ```
 
-5) Restore or create lesson-7/backend.tf with the S3 backend configuration:
+5) Restore or create project/backend.tf with the S3 backend configuration:
 ```hcl
 terraform {
   backend "s3" {
@@ -173,28 +173,28 @@ kubectl get hpa -n django
 
 ## Modules
 
-- s3-backend (lesson-7/modules/s3-backend)
+- s3-backend (project/modules/s3-backend)
   - Purpose: provisions the remote state backend resources
     - S3 bucket for Terraform state (versioning enabled, BucketOwnerEnforced ownership, SSE-S3 encryption)
     - DynamoDB table for state locking (hash key: LockID, PAY_PER_REQUEST)
   - Inputs: bucket_name, table_name
   - Outputs: s3_bucket_url, dynamodb_table_name
 
-- vpc (lesson-7/modules/vpc)
+- vpc (project/modules/vpc)
   - Purpose: creates networking baseline
     - VPC CIDR 10.0.0.0/16
     - 3 public and 3 private subnets across eu-north-1a/b/c
     - Internet Gateway, NAT Gateway (with EIP), route tables and associations
   - Outputs: vpc_id, public_subnet_ids, private_subnet_ids, internet_gateway_id, nat_gateway_id
 
-- ecr (lesson-7/modules/ecr)
+- ecr (project/modules/ecr)
   - Purpose: creates ECR repository for container images
     - Repository name: devops-ci-cd-ecr (scan_on_push enabled)
     - Repository policy restricted to current AWS account root for push/pull
   - Outputs: ecr_repository_url, ecr_repository_arn
 
 
-- eks (lesson-7/modules/eks)
+- eks (project/modules/eks)
   - Purpose: provisions an Amazon EKS cluster and a managed node group
     - Control plane with public endpoint access for this lesson
     - Worker nodes in public subnets (no NAT required)
@@ -204,7 +204,7 @@ kubectl get hpa -n django
 
 ## Charts (Helm)
 
-- django-app (lesson-7/charts/django-app)
+- django-app (project/charts/django-app)
   - Deployment: runs the Django container image from ECR, pulls env via ConfigMap (envFrom)
   - Service: type LoadBalancer (port 80 → container port 8000)
   - HPA: autoscaling from 1 to 3 replicas at >70% CPU utilization
