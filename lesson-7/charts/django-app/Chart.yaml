@@ -1,0 +1,7 @@
+apiVersion: v2
+name: django-app
+description: A minimal Django app chart with Service (LoadBalancer), HPA and ConfigMap
+version: 0.1.0
+appVersion: "1.0.0"
+type: application
+

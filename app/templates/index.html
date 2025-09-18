@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Django App</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;margin:2rem;color:#222}
+    .ok{color:#0b8f00}
+    .err{color:#b00020}
+    code{background:#f2f2f2;padding:.1rem .3rem;border-radius:4px}
+  </style>
+</head>
+<body>
+  <h1>Welcome</h1>
+  {% if db_ok %}
+    <p class="ok">Database connection: <strong>OK</strong> ✅</p>
+  {% else %}
+    <p class="err">Database connection: <strong>ERROR</strong> ❌</p>
+    {% if db_error %}<p><code>{{ db_error }}</code></p>{% endif %}
+  {% endif %}
+</body>
+</html>
+

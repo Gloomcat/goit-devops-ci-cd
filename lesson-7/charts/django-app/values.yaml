@@ -1,0 +1,42 @@
+# Image settings
+image:
+  repository: ""   # e.g. 123456789012.dkr.ecr.eu-north-1.amazonaws.com/devops-ci-cd-ecr
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Service settings
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+
+# Replica / HPA settings
+replicaCount: 1
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# Deployment update strategy (no surge to fit small clusters)
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+
+# ConfigMap values (non-secret env)
+config:
+  DJANGO_DEBUG: "false"
+  DJANGO_ALLOWED_HOSTS: "*"
+  USE_SQLITE: "true"
+
+# Resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 80Mi
+  limits:
+    cpu: 150m
+    memory: 160Mi

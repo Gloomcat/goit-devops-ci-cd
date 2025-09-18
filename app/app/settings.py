@@ -23,10 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-#fk0@+wi!uk$ks7muj2_gdm21j5m2&@3@g4cj1!od4++ut^#$v'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+# Allowed hosts from env (comma-separated). Example: "example.com,localhost,127.0.0.1"
+_raw_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS', '*')
+ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 
 
 # Application definition
@@ -55,7 +56,7 @@ ROOT_URLCONF = 'app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -73,16 +74,27 @@ WSGI_APPLICATION = 'app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-		'ENGINE': 'django.db.backends.postgresql',
-		'HOST': os.environ.get('POSTGRES_HOST', 'app_db'),
-		'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-		'NAME': os.environ.get('POSTGRES_DB', 'postgres'),
-		'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-		'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
-	}
-}
+# Select SQLite for dev if USE_SQLITE=true; otherwise use PostgreSQL via env
+USE_SQLITE = os.environ.get(
+    'USE_SQLITE', 'false').lower() in ('1', 'true', 'yes')
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'HOST': os.environ.get('POSTGRES_HOST', 'app_db'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+            'NAME': os.environ.get('POSTGRES_DB', 'postgres'),
+            'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
+        }
+    }
 
 
 # Password validation
