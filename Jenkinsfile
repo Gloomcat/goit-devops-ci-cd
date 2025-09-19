@@ -88,13 +88,16 @@ EOF
 
     stage('Bump Helm image tag in repo') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'github-ci-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+        withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
           container('git') {
             sh '''
               set -euo pipefail
               source .aws_build.env
               # Update only the image.tag in the app chart values (POSIX sed)
               sed -i "s/^\\([[:space:]]*tag:[[:space:]]*\).*/\\1${IMAGE_TAG}/" project/charts/django-app/values.yaml
+              # corrected sed to avoid Groovy escaping issues and preserve indentation
+              sed -i -E 's/^([[:space:]]*)tag:[[:space:]]*.*/\1tag: '"${IMAGE_TAG}"'/' project/charts/django-app/values.yaml
+
 
               git config user.email "ci@example.com"
               git config user.name "ci"
