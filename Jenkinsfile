@@ -35,12 +35,64 @@ spec:
     AWS_REGION    = 'eu-north-1'
     ECR_REPO_NAME = 'devops-ci-cd-ecr'
   }
+  triggers {
+    pollSCM('H/5 * * * *')
+  }
+
   stages {
     stage('Checkout') {
       steps { checkout scm }
     }
 
+    stage('Check skip conditions') {
+      steps {
+        container('git') {
+          sh '''
+            set -euo pipefail
+            cd "$WORKSPACE"
+
+            PREV="${GIT_PREVIOUS_SUCCESSFUL_COMMIT:-}"
+            if [ -z "$PREV" ]; then PREV=$(git rev-parse HEAD~1 2>/dev/null || echo ""); fi
+
+            MSG=$(git log -1 --pretty=%s || echo "")
+            CHANGED=""
+            if [ -n "$PREV" ]; then
+              CHANGED=$(git diff --name-only "$PREV" HEAD | tr -d '\r')
+            fi
+
+            SKIP_BUILD=false
+            if printf '%s' "$MSG" | grep -qiE '^chore: bump image tag'; then
+              SKIP_BUILD=true
+            else
+              if [ -n "$CHANGED" ]; then
+                COUNT=$(printf '%s\n' "$CHANGED" | grep -v '^$' | wc -l | tr -d ' ')
+                if [ "$COUNT" -eq 1 ] && [ "$CHANGED" = "project/charts/django-app/values.yaml" ]; then
+                  SKIP_BUILD=true
+                fi
+              fi
+            fi
+
+            echo "SKIP_BUILD=${SKIP_BUILD}" > "$WORKSPACE/.skip.env"
+          '''
+        }
+        script {
+          def content = readFile "${env.WORKSPACE}/.skip.env".trim()
+          for (line in content.split("\n")) {
+            if (line) {
+              def parts = line.split("=", 2)
+              env[parts[0]] = parts[1]
+            }
+          }
+          if (env.SKIP_BUILD == 'true') {
+            echo 'Skip conditions met: only values.yaml changed or auto-bump commit; subsequent stages will be skipped.'
+          }
+        }
+      }
+    }
+
+
     stage('Prepare ECR auth for Kaniko') {
+      when { expression { env.SKIP_BUILD != 'true' } }
       steps {
         container('aws') {
           sh '''
@@ -71,6 +123,7 @@ EOF
     }
 
     stage('Build & Push image (Kaniko)') {
+      when { expression { env.SKIP_BUILD != 'true' } }
       steps {
         container('kaniko') {
           sh '''
@@ -87,6 +140,7 @@ EOF
     }
 
     stage('Bump Helm image tag in repo') {
+      when { expression { env.SKIP_BUILD != 'true' } }
       steps {
         withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
           container('git') {
