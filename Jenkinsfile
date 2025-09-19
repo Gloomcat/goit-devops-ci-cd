@@ -93,22 +93,23 @@ EOF
             sh '''
               set -euo pipefail
               . "$WORKSPACE/.aws_build.env"
+              cd "$WORKSPACE"
               # Update only the image.tag in the app chart values (POSIX sed)
 
               # corrected sed to avoid Groovy escaping issues and preserve indentation
               sed -i -E 's/^([[:space:]]*)tag:[[:space:]]*.*/\1tag: '"${IMAGE_TAG}"'/' project/charts/django-app/values.yaml
 
 
-              git config user.email "ci@example.com"
-              git config user.name "ci"
-              git add project/charts/django-app/values.yaml
-              git commit -m "chore: bump image tag to ${IMAGE_TAG}" || true
+              git -C "$WORKSPACE" config user.email "ci@example.com"
+              git -C "$WORKSPACE" config user.name "ci"
+              git -C "$WORKSPACE" add project/charts/django-app/values.yaml
+              git -C "$WORKSPACE" commit -m "chore: bump image tag to ${IMAGE_TAG}" || true
 
               # Push using token-authenticated remote
-              REMOTE_URL=$(git config --get remote.origin.url)
+              REMOTE_URL=$(git -C "$WORKSPACE" config --get remote.origin.url)
               if echo "$REMOTE_URL" | grep -q "^http"; then
                 AUTH_URL=$(echo "$REMOTE_URL" | sed -E "s#https://#https://${GIT_USER}:${GIT_TOKEN}@#")
-                git push "$AUTH_URL" HEAD:main
+                git -C "$WORKSPACE" push "$AUTH_URL" HEAD:main
               else
                 echo "Remote is SSH; please switch to HTTPS or configure Jenkins SSH credentials for push."
                 exit 1
