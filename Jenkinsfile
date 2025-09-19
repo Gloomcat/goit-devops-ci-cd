@@ -94,7 +94,7 @@ EOF
               set -euo pipefail
               source .aws_build.env
               # Update only the image.tag in the app chart values (POSIX sed)
-              sed -i "s/^\\([[:space:]]*tag:[[:space:]]*\).*/\\1${IMAGE_TAG}/" project/charts/django-app/values.yaml
+
               # corrected sed to avoid Groovy escaping issues and preserve indentation
               sed -i -E 's/^([[:space:]]*)tag:[[:space:]]*.*/\1tag: '"${IMAGE_TAG}"'/' project/charts/django-app/values.yaml
 
