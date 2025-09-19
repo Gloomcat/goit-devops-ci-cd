@@ -94,6 +94,9 @@ EOF
               set -euo pipefail
               . "$WORKSPACE/.aws_build.env"
               cd "$WORKSPACE"
+              # Allow Git operations in Jenkins workspace (fix Git 2.35+ "dubious ownership")
+              git config --global --add safe.directory "$WORKSPACE" || true
+
 
               BRANCH="${BRANCH_NAME:-dev}"
 
