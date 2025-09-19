@@ -18,7 +18,7 @@ variable "release_name" {
 variable "chart_version" {
   description = "Version of the Argo CD Helm chart. Leave null to use the latest available"
   type        = string
-  default     = null
+  default     = "5.46.4"
 }
 
 variable "helm_repo_url" {
@@ -53,10 +53,4 @@ variable "image_tag" {
   description = "Default application image tag to deploy (optional). Leave empty to use chart default."
   type        = string
   default     = ""
-}
-
-variable "values_overrides" {
-  description = "Additional Helm values as YAML strings to overlay on top of the module's values.yaml"
-  type        = list(string)
-  default     = []
 }
