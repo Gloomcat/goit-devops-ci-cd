@@ -77,8 +77,8 @@ EOF
             set -euo pipefail
             . "$WORKSPACE/.aws_build.env"
             /kaniko/executor \
-              --context "${WORKSPACE}" \
-              --dockerfile app/Dockerfile \
+              --context "${WORKSPACE}/app" \
+              --dockerfile Dockerfile \
               --destination "${ECR_REPO}:${IMAGE_TAG}" \
               --snapshotMode=redo --single-snapshot
           '''
