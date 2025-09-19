@@ -98,12 +98,12 @@ EOF
               BRANCH="${BRANCH_NAME:-dev}"
 
               # Ensure we are in a git repo; if not, initialize from GIT_URL and checkout the branch
-              if [ ! -d .git ]; then
+              if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
                 if [ -n "${GIT_URL:-}" ]; then
                   git init
-                  git remote add origin "$GIT_URL"
+                  git remote add origin "$GIT_URL" || git remote set-url origin "$GIT_URL"
                   git fetch origin "$BRANCH"
-                  git checkout -B "$BRANCH" "origin/$BRANCH"
+                  git checkout -B "$BRANCH" "origin/$BRANCH" || git checkout -b "$BRANCH"
                 else
                   echo "No git repo and GIT_URL is empty; cannot proceed."
                   exit 1
