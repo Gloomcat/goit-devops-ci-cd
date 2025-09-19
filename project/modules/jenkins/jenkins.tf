@@ -12,12 +12,14 @@ resource "helm_release" "jenkins" {
   ], [yamlencode({
     controller = {
       serviceAccount = {
-        create = true
+        # ServiceAccount is managed by Terraform (see k8s_sa.tf)
+        create = false
         name   = var.service_account_name
-        annotations = {
-          "eks.amazonaws.com/role-arn" = aws_iam_role.jenkins_irsa_role[0].arn
-        }
       }
     }
   })])
+
+  depends_on = [
+    kubernetes_service_account.jenkins_sa
+  ]
 }
