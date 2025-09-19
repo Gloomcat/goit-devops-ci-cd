@@ -25,7 +25,7 @@ module "eks" {
   source          = "./modules/eks"
   cluster_name    = "devops-ci-cd-cluster-demo"
   subnet_ids      = module.vpc.public_subnet_ids
-  instance_type   = "t3.small"
+  instance_type   = "t3.medium"
   node_group_name = "general"
 
   desired_size = 1
