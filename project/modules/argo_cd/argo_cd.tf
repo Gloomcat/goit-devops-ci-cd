@@ -8,7 +8,7 @@ resource "helm_release" "argo_cd" {
 
   values = concat([
     file("${path.module}/values.yaml"),
-  ], var.values_overrides)
+  ])
 }
 
 # Deploy a local Helm chart with Argo CD Applications/Repositories once CRDs are available

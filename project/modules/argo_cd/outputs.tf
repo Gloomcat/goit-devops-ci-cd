@@ -17,9 +17,11 @@ data "kubernetes_service" "argocd_server" {
 }
 
 locals {
-  argocd_host   = coalesce(
-    try(data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname, null),
-    try(data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].ip, null)
+  # Be resilient when LoadBalancer ingress isn't ready yet: avoid coalesce() on all-null values
+  argocd_host = try(
+    data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].hostname,
+    data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress[0].ip,
+    null
   )
   argocd_port   = try(data.kubernetes_service.argocd_server.spec[0].port[0].port, 80)
   argocd_scheme = local.argocd_port == 443 ? "https" : "http"
