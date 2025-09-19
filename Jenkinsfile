@@ -46,17 +46,17 @@ spec:
           sh '''
             set -euo pipefail
             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-            echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}" > .aws_build.env
+            echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}" > "$WORKSPACE/.aws_build.env"
             ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
             ECR_REPO="${ECR_REGISTRY}/${ECR_REPO_NAME}"
-            echo "ECR_REPO=${ECR_REPO}" >> .aws_build.env
+            echo "ECR_REPO=${ECR_REPO}" >> "$WORKSPACE/.aws_build.env"
             # Prefer Jenkins-provided GIT_COMMIT if available
             if [ -n "${GIT_COMMIT:-}" ]; then
               IMAGE_TAG=${GIT_COMMIT:0:7}
             else
               IMAGE_TAG=$(git rev-parse --short HEAD || echo "latest")
             fi
-            echo "IMAGE_TAG=${IMAGE_TAG}" >> .aws_build.env
+            echo "IMAGE_TAG=${IMAGE_TAG}" >> "$WORKSPACE/.aws_build.env"
 
             # Write Docker auth for Kaniko
             mkdir -p /kaniko/.docker
@@ -75,7 +75,7 @@ EOF
         container('kaniko') {
           sh '''
             set -euo pipefail
-            source .aws_build.env
+            . "$WORKSPACE/.aws_build.env"
             /kaniko/executor \
               --context "${WORKSPACE}" \
               --dockerfile app/Dockerfile \
@@ -92,7 +92,7 @@ EOF
           container('git') {
             sh '''
               set -euo pipefail
-              source .aws_build.env
+              . "$WORKSPACE/.aws_build.env"
               # Update only the image.tag in the app chart values (POSIX sed)
 
               # corrected sed to avoid Groovy escaping issues and preserve indentation
