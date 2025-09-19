@@ -113,8 +113,8 @@ EOF
                 fi
               fi
 
-              # Update only the image.tag in the app chart values
-              sed -i -E 's/^[[:space:]]*tag:[[:space:]]*.*/tag: '"${IMAGE_TAG}"'/' project/charts/django-app/values.yaml
+              # Update only image.tag inside the image: block (preserve indentation)
+              sed -i '1,/^image:/{/^image:/,/^[^[:space:]]/ s/^\([[:space:]]*\)tag:[[:space:]]*.*/\1tag: '"\"${IMAGE_TAG}\""'/}' project/charts/django-app/values.yaml
 
               git config user.email "ci@example.com"
               git config user.name "ci"
