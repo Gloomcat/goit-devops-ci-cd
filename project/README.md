@@ -2,36 +2,29 @@
 
 ## Overview
 
-This project provisions a minimal, demo-friendly Kubernetes stack on AWS and deploys a Django web app.
-- Terraform creates: VPC, ECR, and an EKS cluster with a single managed node group.
-- You build and push a Docker image to ECR.
-- A Helm chart deploys the app to EKS:
+This project provisions a minimal, demo‑friendly Kubernetes stack on AWS, deploys Jenkins via Helm, and uses Argo CD for GitOps (auto‑deploying the sample Django app from this repo).
+- Terraform creates: VPC, ECR, EKS (managed node group), aws-ebs-csi-driver add‑on, Jenkins, and Argo CD.
+- Jenkins builds/pushes images to ECR and bumps the chart image.tag in this repository.
+- Argo CD (Service type LoadBalancer, namespace argocd) watches the dev branch and syncs the django-app chart to the cluster.
+- The Django app chart lives in project/charts/django-app:
   - Service type LoadBalancer exposes an external AWS ELB URL
-  - ConfigMap injects non-secret env (e.g., DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, USE_SQLITE)
+  - ConfigMap injects non‑secret env (DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, USE_SQLITE)
   - Default DB is SQLite for simplicity; the index page returns “Database connection: OK/ERROR”.
-  - Deployment uses a zero-surge update strategy (maxSurge: 0) to fit small clusters.
+  - Deployment uses a zero‑surge update strategy (maxSurge: 0) to fit small clusters.
 
 ## How it works (end-to-end)
-1) Provision infra with Terraform (S3/DynamoDB backend for state, VPC networking, ECR, EKS)
-2) Build/push the Django image to ECR
-3) Deploy via Helm (charts/django-app)
-4) Access the app via the Service EXTERNAL hostname from `kubectl get svc`
-5) Settings:
+1) Provision infra with Terraform (VPC, ECR, EKS, aws-ebs-csi-driver add-on, Jenkins, and Argo CD). Backend: local by default; S3/DynamoDB is optional.
+2) Configure kubectl and retrieve endpoints (Jenkins and Argo CD LoadBalancers).
+3) Jenkins pipeline builds/pushes the Django image to ECR and updates image.tag in the Helm values in this repo.
+4) Argo CD monitors the repo (branch `dev`) and automatically syncs the `django-app` chart to the cluster.
+5) Access Jenkins and Argo CD via their LoadBalancer addresses; access the app via its Service EXTERNAL hostname.
+6) Settings:
    - `DJANGO_DEBUG` and `DJANGO_ALLOWED_HOSTS` are read from the environment (ConfigMap)
    - `USE_SQLITE=true` avoids external DB setup (can switch to Postgres later)
 
-## t3.micro usage and AWS Free Tier autoscaling limitations
-- Node type: `t3.micro` (burstable 2 vCPU credits, ~1 GiB RAM) is eligible for Free Tier when used as EC2.
-- Consequences for demos:
-  - Very limited Pod capacity and CPU; a single node often can’t host extra surge Pods during rolling updates.
-  - We set `maxSurge: 0` and recommend keeping replicas at `1` to avoid Pending Pods.
-  - Horizontal Pod Autoscaler (HPA) can increase replica count, but replicas may fail to schedule on a single `t3.micro` without Cluster Autoscaler (which is outside Free Tier intent).
-  - Without metrics-server, HPA CPU scaling won’t function; with metrics-server but no spare capacity, Pods can still remain Pending.
-
-Recommended for Free Tier labs:
-- Keep `autoscaling.enabled=false` or `maxReplicas: 1` in `values.yaml`
-- Maintain zero-surge updates (already configured)
-- If you need real scaling, temporarily switch the node group to a bigger type (e.g., `t3.small`) — note this incurs cost and leaves Free Tier.
+## Node sizing
+- Default node type: `t3.medium` (2 vCPU, 4 GiB RAM).
+- For temporary extra capacity, increase `desired_size`; for single-node setups prefer a larger instance type rather than multiple micros.
 
 ## Install Terraform
 
@@ -82,7 +75,7 @@ Verify:
 helm version
 ```
 
-## Setup S3 backend
+## State backend (default: local; optional: S3)
 
 1) Cd to the project directory:
 ```bash
@@ -131,7 +124,7 @@ terraform apply
 
 ## Kubernetes access and application deployment
 
-1) Configure kubectl to connect to EKS
+Configure kubectl to connect to EKS
 ```bash
 export REGION="eu-north-1"
 export CLUSTER=$(terraform output -raw eks_cluster_name)
@@ -139,32 +132,67 @@ aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER"
 kubectl get nodes
 ```
 
-2) Build and push the Docker image to ECR
+### Jenkins
+
+1) Create required secrets for Jenkins
+
+- Namespace (if not present):
 ```bash
-docker build -t django-app:latest ../app
-export ECR=$(terraform output -raw ecr_repository_url)
-aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$(echo "$ECR" | cut -d'/' -f1)"
-docker tag django-app:latest "$ECR:latest"
-docker push "$ECR:latest"
+kubectl create namespace jenkins || true
 ```
 
-3) Deploy the app with Helm (image repository provided via CLI)
+- Admin credentials (used by Jenkins Configuration as Code):
 ```bash
-helm upgrade --install django ./charts/django-app \
-  -n django --create-namespace \
-  --set image.repository="$ECR" \
-  --set image.tag=latest
+kubectl -n jenkins create secret generic jenkins-admin \
+  --from-literal=ADMIN_USER=admin \
+  --from-literal=ADMIN_PASSWORD='change-me' \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-4) Verify
+- GitHub credentials (for pipeline checkout/push):
 ```bash
-kubectl get deploy,svc,hpa -n django
-kubectl get svc django-django-app -n django -o wide
-kubectl get pods -n django -o wide
+kubectl -n jenkins create secret generic jenkins-github-ci \
+  --from-literal=GITHUB_USER='your-github-username' \
+  --from-literal=GITHUB_TOKEN='ghp_xxx' \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
-Wait for service status to become `Running` instead of `<pending>`. Open the EXTERNAL-IP/Hostname from the Service in your browser.
 
-5) (Optional) Ensure HPA metrics
+2) Get the Jenkins address:
+```bash
+terraform output -raw jenkins_hostname || terraform output -raw jenkins_ip
+kubectl -n jenkins get svc jenkins -o wide
+```
+
+3) Log in:
+- Username/password are the values you set in the `jenkins-admin` secret above.
+
+4) Wait for the LoadBalancer and pods to be Ready:
+```bash
+kubectl -n jenkins get svc,deploy,pods -o wide
+```
+
+### Argo CD access and GitOps application deployment
+
+1) Get Argo CD address (LoadBalancer):
+```bash
+kubectl -n argocd get svc argo-cd-argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+# or IP if hostname is empty
+kubectl -n argocd get svc argo-cd-argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+2) Get the initial admin password:
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
+3) Log in to the Argo CD UI at the address above (username: `admin`).
+- The Application `django-app` is created by Terraform and points to this repo on branch `dev`. It will auto-sync on changes (e.g., when Jenkins updates `image.tag`). You can also click Refresh/Sync in the UI.
+4) Verify deployed resources (Argo CD deploys to namespace `default`):
+```bash
+kubectl -n default get deploy,svc,pods
+```
+
+### (Optional) Ensure HPA metrics
 ```bash
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm upgrade --install metrics-server metrics-server/metrics-server -n kube-system
@@ -202,6 +230,18 @@ kubectl get hpa -n django
   - Inputs: cluster_name, subnet_ids, node_group_name, instance_type, desired_size, min_size, max_size
   - Outputs: eks_cluster_name, eks_cluster_endpoint, eks_node_role_arn
 
+- jenkins (project/modules/jenkins)
+  - Purpose: installs Jenkins via Helm (Service type LoadBalancer) in namespace jenkins
+  - Values layering: module default values.yaml + optional values_overrides (local project/jenkins/values.local.yaml)
+  - Service account: jenkins-sa with IRSA to access AWS as configured
+  - Outputs: jenkins_hostname, jenkins_ip, jenkins_admin_password
+
+- argo_cd (project/modules/argo_cd)
+  - Purpose: installs Argo CD via Helm (Service type LoadBalancer) in namespace argocd, and registers the Git repository + Application (`django-app`) for GitOps.
+  - Repository access: public GitHub repos work without credentials; for private repos, provide credentials via Terraform values/CI secrets.
+  - Access: retrieve the Argo CD server address and initial admin password using the kubectl commands shown above.
+
+
 ## Charts (Helm)
 
 - django-app (project/charts/django-app)
@@ -214,12 +254,7 @@ kubectl get hpa -n django
 
 ## Destroy and cleanup
 
-1) Uninstall the Helm chart (ignore errors if not installed):
-```bash
-helm uninstall django -n django || true
-```
-
-2) Empty ECR repository:
+1) Empty ECR repository:
 ```bash
 export ECR=$(terraform output -raw ecr_repository_url)
 export REPO="${ECR#*/}"
@@ -229,13 +264,13 @@ if [ "$IMAGES" != "[]" ]; then
 fi
 ```
 
-3) Migrate state locally and destroy all resources (including the remote backend module):
+2) Migrate state locally and destroy all resources (including the remote backend module):
 ```bash
 terraform init -migrate-state
 terraform destroy -auto-approve
 ```
 
-4) (Optional) Remove local Terraform artifacts if you don't want to keep state locally
+3) (Optional) Remove local Terraform artifacts if you don't want to keep state locally
 ```text
 .terraform/, terraform.tfstate, terraform.tfstate.backup, etc.
 ```
