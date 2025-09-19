@@ -1,9 +1,7 @@
 controller:
   serviceType: LoadBalancer
   servicePort: 80
-  service:
-    port: 80
-    targetPort: 8080
+  targetPort: 8080
 
   resources:
     limits:
@@ -28,8 +26,10 @@ controller:
     - docker-plugin:latest
     - docker-workflow:latest
     - job-dsl:latest
+    - pipeline-model-definition:latest
+    - pipeline-stage-view:latest
 
-  extraEnv:
+  containerEnv:
     - name: GITHUB_USER
       valueFrom:
         secretKeyRef:
@@ -58,17 +58,16 @@ controller:
   JCasC:
     configScripts:
       creds.yaml: |
-        jenkins:
-          credentials:
-            system:
-              domainCredentials:
-                - credentials:
-                    - usernamePassword:
-                        scope: GLOBAL
-                        id: "github-token"
-                        username: "${GITHUB_USER}"
-                        password: "${GITHUB_TOKEN}"
-                        description: "GitHub PAT"
+        credentials:
+          system:
+            domainCredentials:
+              - credentials:
+                  - usernamePassword:
+                      scope: GLOBAL
+                      id: "github-token"
+                      username: "${GITHUB_USER}"
+                      password: "${GITHUB_TOKEN}"
+                      description: "GitHub PAT"
       security.yaml: |
         jenkins:
           securityRealm:
@@ -81,26 +80,21 @@ controller:
             loggedInUsersCanDoAnything:
               allowAnonymousRead: false
       jobs.yaml: |
-        jenkins:
-          jobs:
-            - script: |
-                pipelineJob('goit-django-docker') {
-                  definition {
-                    cpsScm {
-                      scm {
-                        git {
-                          remote {
-                            url('https://github.com/Gloomcat/goit-devops-ci-cd.git')
-                            credentials('github-token')
-                          }
-                          branches('*/dev')
+        jobs:
+          - script: |
+              pipelineJob('goit-django-docker') {
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/Gloomcat/goit-devops-ci-cd.git')
+                          credentials('github-token')
                         }
+                        branches('*/dev')
                       }
-                      scriptPath('Jenkinsfile')
                     }
+                    scriptPath('Jenkinsfile')
                   }
                 }
-      dsl.yaml: |
-        unclassified:
-          jobDsl:
-            useScriptSecurity: false
+              }
