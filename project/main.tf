@@ -43,12 +43,13 @@ module "argo_cd" {
   image_repository = module.ecr.repository_url
 
   # Wire Django DB settings into the Argo CD Application values
-  django_db_engine   = "django.db.backends.postgresql"
-  django_db_host     = module.rds.host
-  django_db_port     = tostring(module.rds.port)
-  django_db_name     = module.rds.db_name
-  django_db_user     = module.rds.username
-  django_db_password = "admin123AWS23"
+  django_db_engine        = "django.db.backends.postgresql"
+  django_db_host          = module.rds.host
+  django_db_host_reader   = module.rds.reader_host != null ? module.rds.reader_host : ""
+  django_db_port          = tostring(module.rds.port)
+  django_db_name          = module.rds.db_name
+  django_db_user          = module.rds.username
+  django_db_password      = "admin123AWS23"
 }
 
 

@@ -68,6 +68,13 @@ variable "django_db_host" {
   default     = ""
 }
 
+variable "django_db_host_reader" {
+  description = "Aurora reader endpoint (optional). If set, it will be preferred over django_db_host."
+  type        = string
+  default     = ""
+}
+
+
 variable "django_db_port" {
   description = "Database port"
   type        = string
