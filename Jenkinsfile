@@ -51,6 +51,9 @@ spec:
             set -euo pipefail
             cd "$WORKSPACE"
 
+            # Allow Git operations in Jenkins workspace (fix Git 2.35+ "dubious ownership")
+            git config --global --add safe.directory "$WORKSPACE" || true
+
             PREV="${GIT_PREVIOUS_SUCCESSFUL_COMMIT:-}"
             if [ -z "$PREV" ]; then PREV=$(git rev-parse HEAD~1 2>/dev/null || echo ""); fi
 
