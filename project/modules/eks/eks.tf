@@ -104,7 +104,4 @@ resource "aws_eks_node_group" "general" {
     aws_iam_role_policy_attachment.amazon_ec2_container_registry_read_only,
   ]
 
-  lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
-  }
 }

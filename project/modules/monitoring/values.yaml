@@ -1,0 +1,11 @@
+# Default minimal values for kube-prometheus-stack
+# Override as needed (e.g., to expose Grafana/Prometheus via Ingress or LB)
+# Example:
+# grafana:
+#   service:
+#     type: LoadBalancer
+#   adminPassword: "admin"
+# prometheus:
+#   service:
+#     type: LoadBalancer
+

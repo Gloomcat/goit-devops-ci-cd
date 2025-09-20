@@ -28,9 +28,9 @@ module "eks" {
   instance_type   = "t3.medium"
   node_group_name = "general"
 
-  desired_size = 1
-  max_size     = 2
-  min_size     = 1
+  desired_size = 2
+  max_size     = 3
+  min_size     = 2
 }
 
 module "argo_cd" {
@@ -107,4 +107,14 @@ module "rds" {
     Environment = "dev"
     Project     = "myapp"
   }
+}
+
+
+module "monitoring" {
+  source         = "./modules/monitoring"
+  cluster_name   = module.eks.eks_cluster_name
+  kube_host      = module.eks.eks_cluster_endpoint
+  kube_ca        = module.eks.eks_cluster_ca
+  cluster_region = "eu-north-1"
+  namespace      = "monitoring"
 }

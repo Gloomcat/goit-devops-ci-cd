@@ -14,6 +14,21 @@ This project provisions a minimal, demo‑friendly Kubernetes stack on AWS, depl
   - Currently configured to use the WRITER endpoint only; the reader endpoint is ignored
   - Deployment uses a zero‑surge update strategy (maxSurge: 0) to fit small clusters.
 
+
+### Monitoring (Prometheus + Grafana) — usage
+- Installed via Terraform Helm module (kube-prometheus-stack) in namespace `monitoring`
+- Helm repository: https://prometheus-community.github.io/helm-charts, chart: `kube-prometheus-stack`
+- Grafana access (default internal):
+  - Get admin password:
+    - `kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d; echo`
+  - Port-forward and open:
+    - `kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80`
+    - Visit http://localhost:3000 (user: `admin`)
+- Prometheus UI (optional):
+  - `kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090`
+  - Visit http://localhost:9090
+- To expose externally via LoadBalancer or Ingress, edit `project/modules/monitoring/values.yaml` (e.g., set `grafana.service.type: LoadBalancer`) and re-apply Terraform.
+
 ## How it works (end-to-end)
 1) Provision infra with Terraform (VPC, ECR, EKS, aws-ebs-csi-driver add-on, Jenkins, and Argo CD). Backend: local by default; S3/DynamoDB is optional.
 2) Configure kubectl and retrieve endpoints (Jenkins and Argo CD LoadBalancers).
@@ -243,6 +258,22 @@ kubectl get hpa -n django
     - Tagging aligned with other modules
   - Inputs: cluster_name, subnet_ids, node_group_name, instance_type, desired_size, min_size, max_size
   - Outputs: eks_cluster_name, eks_cluster_endpoint, eks_node_role_arn
+
+
+- monitoring (project/modules/monitoring)
+  - Purpose: installs the Kubernetes monitoring stack (Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics) via the `kube-prometheus-stack` Helm chart
+  - Helm:
+    - repository: `https://prometheus-community.github.io/helm-charts`
+    - chart: `kube-prometheus-stack`
+    - namespace: `monitoring`
+  - Values: managed in `project/modules/monitoring/values.yaml`
+    - To expose Grafana externally: set `grafana.service.type: LoadBalancer` (or configure Ingress) and re-apply Terraform
+    - Similarly, you can expose Prometheus via `prometheus.service.type: LoadBalancer`
+  - Usage:
+    - Get Grafana admin password:
+      - `kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d; echo`
+    - Port-forward Grafana locally: `kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80` → open http://localhost:3000 (user: `admin`)
+    - Prometheus UI (optional): `kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090`
 
 - jenkins (project/modules/jenkins)
   - Purpose: installs Jenkins via Helm (Service type LoadBalancer) in namespace jenkins
