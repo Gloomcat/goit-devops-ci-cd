@@ -1,7 +1,7 @@
 # Image settings
 image:
   repository: ""   # e.g. 123456789012.dkr.ecr.eu-north-1.amazonaws.com/devops-ci-cd-ecr
-  tag: c6b7e5b
+  tag: 971e3fd
   pullPolicy: IfNotPresent
 
 # Service settings
