@@ -7,9 +7,11 @@ This project provisions a minimal, demo‑friendly Kubernetes stack on AWS, depl
 - Jenkins builds/pushes images to ECR and bumps the chart image.tag in this repository.
 - Argo CD (Service type LoadBalancer, namespace argocd) watches the dev branch and syncs the django-app chart to the cluster.
 - The Django app chart lives in project/charts/django-app:
-  - Service type LoadBalancer exposes an external AWS ELB URL
-  - ConfigMap injects non‑secret env (DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, USE_SQLITE)
-  - Default DB is SQLite for simplicity; the index page returns “Database connection: OK/ERROR”.
+  - Service type LoadBalancer exposes an external AWS ELB URL, shows OK/FAIL based on DB connectivity on index.
+  - ConfigMap injects non‑secret env (DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, DATABASE_ENGINE/HOST/PORT/NAME/USER)
+  - DATABASE_PASSWORD is also passed via Helm values for now; could be switched to a Secret in production
+  - PostgreSQL only (RDS PostgreSQL or Aurora PostgreSQL). Terraform wires DB settings from the RDS module → Argo CD Application → Helm chart → ConfigMap → Pod env
+  - Currently configured to use the WRITER endpoint only; the reader endpoint is ignored
   - Deployment uses a zero‑surge update strategy (maxSurge: 0) to fit small clusters.
 
 ## How it works (end-to-end)
@@ -18,9 +20,10 @@ This project provisions a minimal, demo‑friendly Kubernetes stack on AWS, depl
 3) Jenkins pipeline builds/pushes the Django image to ECR and updates image.tag in the Helm values in this repo.
 4) Argo CD monitors the repo (branch `dev`) and automatically syncs the `django-app` chart to the cluster.
 5) Access Jenkins and Argo CD via their LoadBalancer addresses; access the app via its Service EXTERNAL hostname.
-6) Settings:
-   - `DJANGO_DEBUG` and `DJANGO_ALLOWED_HOSTS` are read from the environment (ConfigMap)
-   - `USE_SQLITE=true` avoids external DB setup (can switch to Postgres later)
+6) Settings (database via RDS/Aurora):
+   - `DJANGO_DEBUG` and `DJANGO_ALLOWED_HOSTS` are read from ConfigMap
+   - `DATABASE_ENGINE/HOST/PORT/NAME/USER/PASSWORD` are forwarded from Terraform (RDS outputs) via Argo CD into the chart; the app uses the WRITER endpoint only
+   - To switch engines, set `use_aurora = true` in module "rds" and apply. To force writer-only, set `django_db_host_reader = ""` in module "argo_cd" (current default)
 
 ## Node sizing
 - Default node type: `t3.medium` (2 vCPU, 4 GiB RAM).
@@ -221,6 +224,17 @@ kubectl get hpa -n django
     - Repository policy restricted to current AWS account root for push/pull
   - Outputs: ecr_repository_url, ecr_repository_arn
 
+- rds (project/modules/rds)
+  - Purpose: provisions PostgreSQL either as standard Amazon RDS or as an Aurora PostgreSQL cluster
+  - Switch: `use_aurora` (false = RDS PostgreSQL instance; true = Aurora PostgreSQL cluster)
+  - Important inputs (subset):
+    - `engine`, `engine_version` (RDS) • `engine_cluster`, `engine_version_cluster`, `aurora_instance_count` (Aurora)
+    - `db_name`, `username`, `password`, `instance_class`, `publicly_accessible`, `subnet_*`, `vpc_id`
+  - Outputs consumed by Argo CD module:
+    - `host` (writer endpoint)
+    - `reader_host` (Aurora reader endpoint or null for RDS)
+    - `port`, `db_name`, `username`
+  - Notes: Aurora ignores `allocated_storage`; use `aurora_instance_count` for scaling. Ensure security groups/subnets allow the app to reach the DB port.
 
 - eks (project/modules/eks)
   - Purpose: provisions an Amazon EKS cluster and a managed node group
@@ -237,9 +251,12 @@ kubectl get hpa -n django
   - Outputs: jenkins_hostname, jenkins_ip, jenkins_admin_password
 
 - argo_cd (project/modules/argo_cd)
-  - Purpose: installs Argo CD via Helm (Service type LoadBalancer) in namespace argocd, and registers the Git repository + Application (`django-app`) for GitOps.
-  - Repository access: public GitHub repos work without credentials; for private repos, provide credentials via Terraform values/CI secrets.
-  - Access: retrieve the Argo CD server address and initial admin password using the kubectl commands shown above.
+  - Purpose: installs Argo CD via Helm (Service type LoadBalancer) in namespace argocd, and registers the Git repository + Application (`django-app`) for GitOps
+  - Values overlay: forwards image.repository/tag and `config.DATABASE_*` into the Application `helm.values` so the app receives DB settings from Terraform (writer endpoint only; reader is ignored for now)
+  - Destination & sync: `server=https://kubernetes.default.svc`, `namespace=default`; automated sync with `selfHeal` and `prune`
+  - Inputs (subset): `image_repository`, `image_tag` (optional), `django_db_engine`, `django_db_host`, `django_db_host_reader`, `django_db_port`, `django_db_name`, `django_db_user`, `django_db_password`
+  - Repository access: public GitHub repos work without credentials; for private repos, provide credentials via Terraform values/CI secrets
+  - Access: retrieve the Argo CD server address and initial admin password using the kubectl commands shown above
 
 
 ## Charts (Helm)
@@ -248,9 +265,9 @@ kubectl get hpa -n django
   - Deployment: runs the Django container image from ECR, pulls env via ConfigMap (envFrom)
   - Service: type LoadBalancer (port 80 → container port 8000)
   - HPA: autoscaling from 1 to 3 replicas at >70% CPU utilization
-  - ConfigMap: non‑secret environment variables (e.g., DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, USE_SQLITE)
+  - ConfigMap: non‑secret environment variables (DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS, DATABASE_ENGINE/HOST/PORT/NAME/USER); DATABASE_PASSWORD is passed via Helm values (could be a Secret in production)
   - values.yaml: controls image (repository, tag), service ports, autoscaling, and resources (requests/limits)
-  - Note: USE_SQLITE is set to "true" by default for this lesson so no external DB is required
+  - Note: The app is PostgreSQL-only; DB settings are provided by Terraform/Argo CD and the app uses the WRITER endpoint
 
 ## Destroy and cleanup
 
