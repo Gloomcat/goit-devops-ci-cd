@@ -79,13 +79,10 @@ spec:
           '''
         }
         script {
-          def content = readFile "${env.WORKSPACE}/.skip.env".trim()
-          for (line in content.split("\n")) {
-            if (line) {
-              def parts = line.split("=", 2)
-              env[parts[0]] = parts[1]
-            }
-          }
+          def content = readFile("${env.WORKSPACE}/.skip.env").trim()
+          // .skip.env contains only SKIP_BUILD=<true|false>
+          def skip = content.readLines().find { it.startsWith('SKIP_BUILD=') }?.split('=', 2)[1] ?: 'false'
+          env.SKIP_BUILD = skip
           if (env.SKIP_BUILD == 'true') {
             echo 'Skip conditions met: only values.yaml changed or auto-bump commit; subsequent stages will be skipped.'
           }

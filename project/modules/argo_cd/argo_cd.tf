@@ -25,7 +25,7 @@ resource "helm_release" "argo_cd" {
               "  DJANGO_DEBUG: \"false\"",
               "  DJANGO_ALLOWED_HOSTS: \"*\"",
               "  DATABASE_ENGINE: \"${var.django_db_engine}\"",
-              "  DATABASE_HOST: \"${var.django_db_host}\"",
+              "  DATABASE_HOST: \"${length(var.django_db_host_reader) > 0 ? var.django_db_host_reader : var.django_db_host}\"",
               "  DATABASE_PORT: \"${var.django_db_port}\"",
               "  DATABASE_NAME: \"${var.django_db_name}\"",
               "  DATABASE_USER: \"${var.django_db_user}\"",
