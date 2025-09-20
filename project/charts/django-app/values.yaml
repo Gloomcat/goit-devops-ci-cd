@@ -27,7 +27,15 @@ strategy:
 
 
 # ConfigMap values (non-secret env)
+# Configure Django to use PostgreSQL (Postgres or Aurora-PostgreSQL)
 config:
   DJANGO_DEBUG: "false"
   DJANGO_ALLOWED_HOSTS: "*"
-  USE_SQLITE: "true"
+  DATABASE_ENGINE: "django.db.backends.postgresql"
+  DATABASE_HOST: ""
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: ""
+  DATABASE_USER: ""
+  DATABASE_PASSWORD: ""
+  # Optional: if your app supports it, you can set DATABASE_URL instead
+  DATABASE_URL: ""

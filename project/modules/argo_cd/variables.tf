@@ -54,3 +54,40 @@ variable "image_tag" {
   type        = string
   default     = ""
 }
+
+# Django app database settings to be wired into Helm Application values
+variable "django_db_engine" {
+  description = "Django DATABASE_ENGINE (e.g., django.db.backends.postgresql)"
+  type        = string
+  default     = "django.db.backends.postgresql"
+}
+
+variable "django_db_host" {
+  description = "Database host"
+  type        = string
+  default     = ""
+}
+
+variable "django_db_port" {
+  description = "Database port"
+  type        = string
+  default     = "5432"
+}
+
+variable "django_db_name" {
+  description = "Database name"
+  type        = string
+  default     = ""
+}
+
+variable "django_db_user" {
+  description = "Database user"
+  type        = string
+  default     = ""
+}
+
+variable "django_db_password" {
+  description = "Database password"
+  type        = string
+  default     = ""
+}
