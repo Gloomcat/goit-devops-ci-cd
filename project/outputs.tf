@@ -87,3 +87,65 @@ output "argocd_initial_admin_password" {
   value       = try(module.argo_cd.argocd_initial_admin_password, null)
   sensitive   = true
 }
+
+
+# RDS module aggregated outputs
+output "rds_engine" {
+  description = "Database engine in use"
+  value       = module.rds.engine
+}
+
+output "rds_host" {
+  description = "Primary writer endpoint/hostname"
+  value       = try(module.rds.host, null)
+}
+
+output "rds_reader_host" {
+  description = "Reader endpoint for Aurora (null for standard RDS)"
+  value       = try(module.rds.reader_host, null)
+}
+
+output "rds_port" {
+  description = "Database port"
+  value       = try(module.rds.port, null)
+}
+
+output "rds_db_name" {
+  description = "Database name"
+  value       = try(module.rds.db_name, null)
+}
+
+output "rds_username" {
+  description = "Master username"
+  value       = try(module.rds.username, null)
+}
+
+output "rds_security_group_id" {
+  description = "Security group ID used by the database"
+  value       = try(module.rds.security_group_id, null)
+}
+
+output "rds_subnet_group_name" {
+  description = "DB subnet group name"
+  value       = try(module.rds.subnet_group_name, null)
+}
+
+output "rds_instance_id" {
+  description = "DB instance identifier (null for Aurora)"
+  value       = try(module.rds.instance_id, null)
+}
+
+output "rds_instance_arn" {
+  description = "DB instance ARN (null for Aurora)"
+  value       = try(module.rds.instance_arn, null)
+}
+
+output "rds_cluster_id" {
+  description = "Aurora cluster identifier (null for standard RDS)"
+  value       = try(module.rds.cluster_id, null)
+}
+
+output "rds_cluster_arn" {
+  description = "Aurora cluster ARN (null for standard RDS)"
+  value       = try(module.rds.cluster_arn, null)
+}

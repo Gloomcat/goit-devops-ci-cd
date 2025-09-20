@@ -74,27 +74,30 @@ WSGI_APPLICATION = 'app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Select SQLite for dev if USE_SQLITE=true; otherwise use PostgreSQL via env
-USE_SQLITE = os.environ.get(
-    'USE_SQLITE', 'false').lower() in ('1', 'true', 'yes')
-if USE_SQLITE:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+# PostgreSQL only (supports Aurora-PostgreSQL). Configure via env vars.
+DB_ENGINE = os.environ.get('DATABASE_ENGINE', os.environ.get(
+    'POSTGRES_ENGINE', 'django.db.backends.postgresql'))
+DB_HOST = os.environ.get(
+    'DATABASE_HOST', os.environ.get('POSTGRES_HOST', 'app'))
+DB_PORT = os.environ.get(
+    'DATABASE_PORT', os.environ.get('POSTGRES_PORT', '5432'))
+DB_NAME = os.environ.get(
+    'DATABASE_NAME', os.environ.get('POSTGRES_DB', 'postgres'))
+DB_USER = os.environ.get(
+    'DATABASE_USER', os.environ.get('POSTGRES_USER', 'postgres'))
+DB_PASSWORD = os.environ.get(
+    'DATABASE_PASSWORD', os.environ.get('POSTGRES_PASSWORD', ''))
+
+DATABASES = {
+    'default': {
+        'ENGINE': DB_ENGINE,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.environ.get('POSTGRES_HOST', 'app_db'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-            'NAME': os.environ.get('POSTGRES_DB', 'postgres'),
-            'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
-        }
-    }
+}
 
 
 # Password validation
