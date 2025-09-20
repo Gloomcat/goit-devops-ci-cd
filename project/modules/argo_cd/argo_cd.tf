@@ -18,6 +18,10 @@ resource "helm_release" "argo_cd" {
     [yamlencode({
       applications = [{
         name = "django-app"
+        destination = {
+          server    = "https://kubernetes.default.svc"
+          namespace = "default"
+        }
         source = {
           helm = {
             values = join("\n", [
@@ -46,12 +50,54 @@ resource "helm_release" "argocd_apps" {
 
   values = concat([
     file("${path.module}/charts/values.yaml"),
-  ], var.image_repository == "" && var.image_tag == "" ? [] : [yamlencode({
-    global = {
-      imageRepository = var.image_repository
-      imageTag        = var.image_tag
-    }
-  })])
+  ],
+    var.image_repository == "" && var.image_tag == "" ? [] : [yamlencode({
+      global = {
+        imageRepository = var.image_repository
+        imageTag        = var.image_tag
+      }
+    })],
+    [yamlencode({
+      applications = [{
+        name      = "django-app"
+        namespace = "argocd"
+        project   = "default"
+        source = {
+          repoURL        = "https://github.com/Gloomcat/goit-devops-ci-cd"
+          targetRevision = "dev"
+          path           = "project/charts/django-app"
+          helm = {
+            values = yamlencode({
+              image = merge(
+                var.image_repository == "" ? {} : { repository = var.image_repository },
+                var.image_tag == "" ? {} : { tag = var.image_tag }
+              )
+              config = {
+                DJANGO_DEBUG        = "false"
+                DJANGO_ALLOWED_HOSTS= "*"
+                DATABASE_ENGINE     = var.django_db_engine
+                DATABASE_HOST       = length(var.django_db_host_reader) > 0 ? var.django_db_host_reader : var.django_db_host
+                DATABASE_PORT       = var.django_db_port
+                DATABASE_NAME       = var.django_db_name
+                DATABASE_USER       = var.django_db_user
+                DATABASE_PASSWORD   = var.django_db_password
+              }
+            })
+          }
+        }
+        destination = {
+          server    = "https://kubernetes.default.svc"
+          namespace = "default"
+        }
+        syncPolicy = {
+          automated = {
+            prune    = true
+            selfHeal = true
+          }
+        }
+      }]
+    })]
+  )
 
   depends_on = [helm_release.argo_cd]
 }
